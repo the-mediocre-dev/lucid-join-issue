@@ -12,16 +12,23 @@ test.group('Issues', (group) => {
     return () => Database.rollbackGlobalTransaction()
   })
 
-  test('query the issue id', async () => {
+  test('joins on the comments table and correctly serializes the results', async ({ assert }) => {
     const issue = await IssueFactory.create()
-    const comment = await CommentFactory.merge({
-      content: 'hello world',
+
+    await CommentFactory.merge({
+      content: 'comment 1',
       issueId: issue.id,
     }).create()
 
-    await Issue.query()
-      .join('comments', 'comments.issue_id', '=', 'issues.id')
-      .where('comments.id', '=', comment.id)
-      .select('id')
+    await CommentFactory.merge({
+      content: 'comment 2',
+      issueId: issue.id,
+    }).create()
+
+    const results = await Issue.query().join('comments', 'comments.issue_id', '=', 'issues.id')
+
+    assert.lengthOf(results, 2)
+    assert.strictEqual(results[0].id, issue.id)
+    assert.strictEqual(results[1].id, issue.id)
   })
 })
